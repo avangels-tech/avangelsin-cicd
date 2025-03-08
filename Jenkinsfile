@@ -1,10 +1,12 @@
-
 pipeline {
     agent {
         kubernetes {
             label 'jenkins-agent'
             defaultContainer 'build-tools'
         }
+    }
+    environment {
+        NAMESPACE = "pipeline-${env.JOB_NAME.replaceAll('/', '-')}-${env.BUILD_NUMBER}"
     }
     stages {
         stage('Checkout') {
@@ -26,19 +28,23 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-                    sh 'sed -i "s/latest/${BUILD_NUMBER}/g" k8s-deployment.yaml'
-                    sh 'kubectl apply -f k8s-deployment.yaml'
+                    sh """
+                        sed -i "s|namespace: default|namespace: ${NAMESPACE}|g" k8s-deployment.yaml
+                        sed -i "s|latest|${BUILD_NUMBER}|g" k8s-deployment.yaml
+                        kubectl apply -f k8s-deployment.yaml
+                    """
                 }
             }
         }
     }
     post {
-    always {
-        container('kubectl') {
-            sh """
-                kubectl delete namespace ${NAMESPACE} || echo "Namespace ${NAMESPACE} not found or already deleted"
-            """
+        always {
+            container('kubectl') {
+                sh """
+                    kubectl delete namespace ${NAMESPACE} || echo "Namespace ${NAMESPACE} not found or already deleted"
+                """
+            }
+            echo "Pipeline completed!"
         }
-        echo "Pipeline completed!"
     }
 }
