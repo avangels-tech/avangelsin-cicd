@@ -25,6 +25,45 @@ pipeline {
                 }
             }
         }
+        stage('Create Namespace and RBAC') {
+            steps {
+                container('kubectl') {
+                    sh """
+                        kubectl create namespace ${NAMESPACE} || echo "Namespace ${NAMESPACE} already exists"
+                    """
+                    sh """
+                        kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: ${NAMESPACE}
+  name: jenkins-deployer
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: ${NAMESPACE}
+  name: jenkins-deployer-binding
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: jenkinsx
+roleRef:
+  kind: Role
+  name: jenkins-deployer
+  apiGroup: rbac.authorization.k8s.io
+EOF
+                    """
+                }
+            }
+        }
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
