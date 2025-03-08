@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demo-app
-  namespace: default
+  namespace: default  # Will be replaced by pipeline
 spec:
   replicas: 1
   selector:
@@ -15,10 +15,26 @@ spec:
     spec:
       containers:
       - name: demo-app
-        image: avangelstech/avangelsin:latest
+        image: avangelstech/avangelsin:latest  # Will be replaced by pipeline
         ports:
         - containerPort: 3000
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+      imagePullSecrets:
+      - name: dockerhub-cred  # Optional, if created
+      
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
