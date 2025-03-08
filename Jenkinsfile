@@ -33,8 +33,12 @@ pipeline {
         }
     }
     post {
-        always {
-            echo 'Pipeline completed!'
+    always {
+        container('kubectl') {
+            sh """
+                kubectl delete namespace ${NAMESPACE} || echo "Namespace ${NAMESPACE} not found or already deleted"
+            """
         }
+        echo "Pipeline completed!"
     }
 }
